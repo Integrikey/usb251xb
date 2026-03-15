@@ -186,3 +186,92 @@ pub struct StatusCommand {
     #[skip]
     __reserved: B5,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn variant_product_ids() {
+        assert_eq!(Variant::Usb2512b.product_id(), 0x2512);
+        assert_eq!(Variant::Usb2513b.product_id(), 0x2513);
+        assert_eq!(Variant::Usb2514b.product_id(), 0x2514);
+    }
+
+    #[test]
+    fn config_byte1_default_roundtrip() {
+        let byte = ConfigByte1::from_bytes([0x9B]);
+        assert_eq!(byte.self_bus_power(), true);
+        assert_eq!(byte.mtt_enable(), true);
+        assert_eq!(byte.port_power(), PowerSwitching::Individual);
+        assert_eq!(byte.current_sensing(), CurrentSensing::Individual);
+        assert_eq!(byte.hs_disable(), false);
+        assert_eq!(byte.eop_disable(), true);
+        assert_eq!(byte.into_bytes(), [0x9B]);
+    }
+
+    #[test]
+    fn config_byte2_default_roundtrip() {
+        // 0x20 = 0b0010_0000: bits 5:4 = 0b10 = Ms8
+        let byte = ConfigByte2::from_bytes([0x20]);
+        assert_eq!(byte.oc_timer(), OcTimer::Ms8);
+        assert_eq!(byte.compound(), false);
+        assert_eq!(byte.dynamic_power(), false);
+        assert_eq!(byte.into_bytes(), [0x20]);
+    }
+
+    #[test]
+    fn config_byte1_builder() {
+        let byte = ConfigByte1::new()
+            .with_self_bus_power(true)
+            .with_mtt_enable(true)
+            .with_current_sensing(CurrentSensing::Ganged)
+            .with_port_power(PowerSwitching::Ganged);
+        assert_eq!(byte.into_bytes(), [0x90]);
+    }
+
+    #[test]
+    fn port_bitfield_individual_ports() {
+        let pf = PortBitfield::new().with_port1(true).with_port3(true);
+        assert_eq!(pf.into_bytes(), [0b0000_1010]);
+        assert_eq!(pf.port1(), true);
+        assert_eq!(pf.port2(), false);
+        assert_eq!(pf.port3(), true);
+        assert_eq!(pf.port4(), false);
+    }
+
+    #[test]
+    fn boost_downstream_all_ports() {
+        let bd = BoostDownstream::new()
+            .with_port1(BoostLevel::Low)
+            .with_port2(BoostLevel::Medium)
+            .with_port3(BoostLevel::High)
+            .with_port4(BoostLevel::None);
+        assert_eq!(bd.into_bytes(), [0b00_11_10_01]);
+        assert_eq!(bd.port1(), BoostLevel::Low);
+        assert_eq!(bd.port2(), BoostLevel::Medium);
+        assert_eq!(bd.port3(), BoostLevel::High);
+        assert_eq!(bd.port4(), BoostLevel::None);
+    }
+
+    #[test]
+    fn port_map_roundtrip() {
+        let pm = PortMap12::new()
+            .with_port1(LogicalPort::Port3)
+            .with_port2(LogicalPort::Port1);
+        assert_eq!(pm.port1(), LogicalPort::Port3);
+        assert_eq!(pm.port2(), LogicalPort::Port1);
+    }
+
+    #[test]
+    fn status_command_attach() {
+        let cmd = StatusCommand::new().with_usb_attach(true);
+        assert_eq!(cmd.into_bytes(), [0x01]);
+    }
+
+    #[test]
+    fn status_command_reset() {
+        let cmd = StatusCommand::new().with_reset(true);
+        assert_eq!(cmd.into_bytes(), [0x02]);
+    }
+}

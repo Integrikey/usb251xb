@@ -236,3 +236,198 @@ fn string_chunks(desc: &StringDescriptor, base_reg: u8) -> (Chunk, Chunk) {
 
     (chunk_a, chunk_b)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::register::Variant;
+
+    // Minimal I2C error type so we can call StringDescriptor::encode() in tests.
+    #[derive(Debug)]
+    struct DummyI2cError;
+
+    impl embedded_hal::i2c::Error for DummyI2cError {
+        fn kind(&self) -> embedded_hal::i2c::ErrorKind {
+            embedded_hal::i2c::ErrorKind::Other
+        }
+    }
+
+    type TestResult<T> = Result<T, crate::error::Error<DummyI2cError>>;
+
+    #[test]
+    fn string_descriptor_empty() {
+        let sd = StringDescriptor::empty();
+        assert_eq!(sd.len(), 0);
+        assert_eq!(sd.byte_len(), 0);
+        assert!(sd.is_empty());
+    }
+
+    #[test]
+    fn string_descriptor_default_is_empty() {
+        let sd = StringDescriptor::default();
+        assert_eq!(sd.len(), 0);
+        assert!(sd.is_empty());
+    }
+
+    #[test]
+    fn string_descriptor_encode_ascii() -> TestResult<()> {
+        let sd = StringDescriptor::encode::<DummyI2cError>("Hello")?;
+        assert_eq!(sd.len(), 5);
+        assert_eq!(sd.byte_len(), 10);
+        assert!(!sd.is_empty());
+
+        let mut buf = [0u8; 10];
+        let n = sd.write_le_bytes(&mut buf);
+        assert_eq!(n, 10);
+        // "Hello" as UTF-16LE
+        assert_eq!(buf, [b'H', 0, b'e', 0, b'l', 0, b'l', 0, b'o', 0]);
+        Ok(())
+    }
+
+    #[test]
+    fn string_descriptor_encode_non_bmp() -> TestResult<()> {
+        // U+1F600 (😀) encodes as a surrogate pair: 2 UTF-16 code units
+        let sd = StringDescriptor::encode::<DummyI2cError>("😀")?;
+        assert_eq!(sd.len(), 2);
+        assert_eq!(sd.byte_len(), 4);
+        Ok(())
+    }
+
+    #[test]
+    fn string_descriptor_too_long() {
+        let long = "a]".repeat(32); // 32 code units > 31 max
+        let result = StringDescriptor::encode::<DummyI2cError>(&long);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn string_descriptor_max_length() -> TestResult<()> {
+        let max = "x".repeat(31);
+        let sd = StringDescriptor::encode::<DummyI2cError>(&max)?;
+        assert_eq!(sd.len(), 31);
+        assert_eq!(sd.byte_len(), 62);
+        Ok(())
+    }
+
+    #[test]
+    fn for_variant_sets_product_id() {
+        let c2 = Config::for_variant(Variant::Usb2512b);
+        let c3 = Config::for_variant(Variant::Usb2513b);
+        let c4 = Config::for_variant(Variant::Usb2514b);
+        assert_eq!(c2.product_id, 0x2512);
+        assert_eq!(c3.product_id, 0x2513);
+        assert_eq!(c4.product_id, 0x2514);
+        // Common defaults
+        assert_eq!(c4.vendor_id, 0x0424);
+        assert_eq!(c4.device_id, 0x0BB3);
+    }
+
+    #[test]
+    fn register_chunks_count_and_addresses() {
+        let config = Config::for_variant(Variant::Usb2514b);
+        let chunks = config.to_register_chunks();
+
+        // Chunk 0: IDs + config (0x00, 22 bytes)
+        assert_eq!(chunks[0].0, 0x00);
+        assert_eq!(chunks[0].2, 22);
+
+        // Chunks 1-2: Manufacturer string
+        assert_eq!(chunks[1].0, REG_MANUFACTURER_STRING);
+        assert_eq!(chunks[2].0, REG_MANUFACTURER_STRING.wrapping_add(32));
+
+        // Chunks 3-4: Product string
+        assert_eq!(chunks[3].0, REG_PRODUCT_STRING);
+
+        // Chunks 5-6: Serial string
+        assert_eq!(chunks[5].0, REG_SERIAL_STRING);
+
+        // Chunk 7: Battery charging
+        assert_eq!(chunks[7].0, REG_BATTERY_CHARGING);
+        assert_eq!(chunks[7].2, 1);
+
+        // Chunk 8: Boost upstream
+        assert_eq!(chunks[8].0, REG_BOOST_UPSTREAM);
+        assert_eq!(chunks[8].2, 1);
+
+        // Chunk 9: Boost downstream
+        assert_eq!(chunks[9].0, REG_BOOST_DOWNSTREAM);
+        assert_eq!(chunks[9].2, 1);
+
+        // Chunk 10: Port swap + maps (3 bytes)
+        assert_eq!(chunks[10].0, REG_PORT_SWAP);
+        assert_eq!(chunks[10].2, 3);
+
+        // Chunk 11: unused
+        assert_eq!(chunks[11].2, 0);
+    }
+
+    #[test]
+    fn register_chunks_ids_serialized_le() {
+        let config = Config::for_variant(Variant::Usb2514b);
+        let chunks = config.to_register_chunks();
+        let buf = &chunks[0].1;
+
+        // Vendor ID 0x0424 little-endian
+        assert_eq!(buf[0], 0x24);
+        assert_eq!(buf[1], 0x04);
+        // Product ID 0x2514 little-endian
+        assert_eq!(buf[2], 0x14);
+        assert_eq!(buf[3], 0x25);
+        // Device ID 0x0BB3 little-endian
+        assert_eq!(buf[4], 0xB3);
+        assert_eq!(buf[5], 0x0B);
+        // Config byte 1: 0x9B
+        assert_eq!(buf[6], 0x9B);
+        // Config byte 2: 0x20
+        assert_eq!(buf[7], 0x20);
+    }
+
+    #[test]
+    fn register_chunks_power_fields() {
+        let mut config = Config::for_variant(Variant::Usb2514b);
+        config.max_power_bus_ma = 500;
+        config.power_on_time_ms = 200;
+
+        let chunks = config.to_register_chunks();
+        let buf = &chunks[0].1;
+
+        // 500mA / 2 = 250
+        assert_eq!(buf[13], 250);
+        // 200ms / 2 = 100
+        assert_eq!(buf[16], 100);
+    }
+
+    #[test]
+    fn register_chunks_string_lengths() -> TestResult<()> {
+        let mut config = Config::for_variant(Variant::Usb2514b);
+        config.manufacturer_string = StringDescriptor::encode::<DummyI2cError>("Test")?;
+
+        let chunks = config.to_register_chunks();
+        let buf = &chunks[0].1;
+
+        // Manufacturer string: 4 codeunits * 2 = 8 bytes
+        assert_eq!(buf[19], 8);
+        // Product + serial: empty = 0
+        assert_eq!(buf[20], 0);
+        assert_eq!(buf[21], 0);
+
+        // First string chunk should have 8 bytes of data
+        assert_eq!(chunks[1].2, 8);
+        // Second chunk empty (8 < 32)
+        assert_eq!(chunks[2].2, 0);
+        Ok(())
+    }
+
+    #[test]
+    fn register_chunks_long_string_splits() -> TestResult<()> {
+        let mut config = Config::for_variant(Variant::Usb2514b);
+        // 20 chars = 40 bytes UTF-16LE → split into 32 + 8
+        config.manufacturer_string =
+            StringDescriptor::encode::<DummyI2cError>("12345678901234567890")?;
+
+        let chunks = config.to_register_chunks();
+        assert_eq!(chunks[1].2, 32);
+        assert_eq!(chunks[2].2, 8);
+        Ok(())
+    }
+}
