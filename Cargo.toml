@@ -11,6 +11,30 @@ embedded-hal-async = { version = "1.0", optional = true }
 modular-bitfield = "0.13"
 thiserror = { version = "2", default-features = false }
 
+# On-target test dependencies (gated behind the `on-target` feature)
+cortex-m-rt = { version = "0.7", optional = true }
+defmt = { version = "1", optional = true }
+embassy-executor = { version = "0.9", features = ["arch-cortex-m", "executor-thread"], optional = true }
+embassy-rp = { version = "0.9", features = ["rp235xa", "time-driver", "critical-section-impl"], optional = true }
+embassy-time = { version = "0.5", optional = true }
+embedded-test = { version = "0.7", features = ["embassy", "defmt"], optional = true }
+rtt-target = { version = "0.6", features = ["defmt"], optional = true }
+
 [features]
 default = []
 async = ["dep:embedded-hal-async"]
+on-target = [
+    "dep:cortex-m-rt",
+    "dep:defmt",
+    "dep:embassy-executor",
+    "dep:embassy-rp",
+    "dep:embassy-time",
+    "dep:embedded-test",
+    "dep:rtt-target",
+    "async",
+]
+
+[[test]]
+name = "on_target"
+harness = false
+required-features = ["on-target"]
