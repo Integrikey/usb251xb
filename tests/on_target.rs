@@ -6,6 +6,7 @@ use embassy_rp::gpio::{Level, Output};
 use embassy_rp::i2c::{self, I2c};
 use embassy_rp::peripherals::I2C1;
 use embassy_time::Timer;
+use usb251xb::config::StringDescriptor;
 use usb251xb::register::*;
 use usb251xb::{Config, Usb251xbAsync, Variant};
 
@@ -87,5 +88,47 @@ mod tests {
         defmt::assert_eq!(count, 32, "expected 32-byte block read");
         let vendor_id = u16::from_le_bytes([buf[1], buf[2]]);
         defmt::assert_eq!(vendor_id, 0x0424, "expected Microchip vendor ID");
+    }
+
+    #[test]
+    async fn manufacturer_string_roundtrip(mut state: State) {
+        let mut config = Config::for_variant(Variant::Usb2514b);
+        config.manufacturer_string =
+            StringDescriptor::encode("Keystrike Inc.").expect("encode manufacturer string");
+        state
+            .hub
+            .configure(&config)
+            .await
+            .expect("configure with manufacturer string");
+
+        // Read the string length register (0x13) to confirm byte count.
+        let mut len_buf = [0u8; 33];
+        let _count = state
+            .hub
+            .read_register(REG_MANUFACTURER_STRING_LEN, &mut len_buf)
+            .await
+            .expect("read string length register");
+        // "Keystrike Inc." = 14 codeunits * 2 = 28 bytes
+        defmt::assert_eq!(len_buf[1], 28, "manufacturer string byte length");
+
+        // Read the string data (0x16). 28 bytes fits in one 32-byte block.
+        let mut str_buf = [0u8; 33];
+        let count = state
+            .hub
+            .read_register(REG_MANUFACTURER_STRING, &mut str_buf)
+            .await
+            .expect("read manufacturer string");
+        defmt::assert_eq!(count, 32, "expected 32-byte block read");
+
+        // Decode UTF-16LE from str_buf[1..29] and compare.
+        let mut expected = [0u8; 28];
+        let mut i = 0;
+        for c in "Keystrike Inc.".encode_utf16() {
+            let le = c.to_le_bytes();
+            expected[i] = le[0];
+            expected[i + 1] = le[1];
+            i += 2;
+        }
+        defmt::assert_eq!(str_buf[1..29], expected[..], "manufacturer string data");
     }
 }
