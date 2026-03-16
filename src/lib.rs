@@ -12,7 +12,7 @@ pub mod device_async;
 
 pub use config::{Config, StringDescriptor};
 pub use device::Usb251xb;
-pub use error::Error;
+pub use error::{Error, StringDescriptorError};
 pub use register::Variant;
 
 #[cfg(feature = "async")]

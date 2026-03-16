@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::error::StringDescriptorError;
 use crate::register::*;
 
 /// A single register chunk: (start_register, data_buffer, data_length).
@@ -25,14 +25,14 @@ impl StringDescriptor {
 
     /// Encodes a `&str` into a USB string descriptor (UTF-16LE).
     ///
-    /// Returns `StringTooLong` if the string encodes to more than 31
-    /// UTF-16 code units.
-    pub fn encode<E: embedded_hal::i2c::Error>(s: &str) -> Result<Self, Error<E>> {
+    /// Returns [`StringDescriptorError::TooLong`] if the string encodes to
+    /// more than 31 UTF-16 code units.
+    pub fn encode(s: &str) -> Result<Self, StringDescriptorError> {
         let mut buf = [0u16; MAX_STRING_CODEUNITS];
         let mut i = 0;
         for c in s.encode_utf16() {
             if i >= MAX_STRING_CODEUNITS {
-                return Err(Error::StringTooLong {
+                return Err(StringDescriptorError::TooLong {
                     len: s.encode_utf16().count(),
                     max: MAX_STRING_CODEUNITS,
                 });
@@ -242,17 +242,7 @@ mod tests {
     use super::*;
     use crate::register::Variant;
 
-    // Minimal I2C error type so we can call StringDescriptor::encode() in tests.
-    #[derive(Debug)]
-    struct DummyI2cError;
-
-    impl embedded_hal::i2c::Error for DummyI2cError {
-        fn kind(&self) -> embedded_hal::i2c::ErrorKind {
-            embedded_hal::i2c::ErrorKind::Other
-        }
-    }
-
-    type TestResult<T> = Result<T, crate::error::Error<DummyI2cError>>;
+    type TestResult<T> = Result<T, StringDescriptorError>;
 
     #[test]
     fn string_descriptor_empty() {
@@ -271,7 +261,7 @@ mod tests {
 
     #[test]
     fn string_descriptor_encode_ascii() -> TestResult<()> {
-        let sd = StringDescriptor::encode::<DummyI2cError>("Hello")?;
+        let sd = StringDescriptor::encode("Hello")?;
         assert_eq!(sd.len(), 5);
         assert_eq!(sd.byte_len(), 10);
         assert!(!sd.is_empty());
@@ -287,7 +277,7 @@ mod tests {
     #[test]
     fn string_descriptor_encode_non_bmp() -> TestResult<()> {
         // U+1F600 (😀) encodes as a surrogate pair: 2 UTF-16 code units
-        let sd = StringDescriptor::encode::<DummyI2cError>("😀")?;
+        let sd = StringDescriptor::encode("😀")?;
         assert_eq!(sd.len(), 2);
         assert_eq!(sd.byte_len(), 4);
         Ok(())
@@ -296,14 +286,14 @@ mod tests {
     #[test]
     fn string_descriptor_too_long() {
         let long = "a]".repeat(32); // 32 code units > 31 max
-        let result = StringDescriptor::encode::<DummyI2cError>(&long);
+        let result = StringDescriptor::encode(&long);
         assert!(result.is_err());
     }
 
     #[test]
     fn string_descriptor_max_length() -> TestResult<()> {
         let max = "x".repeat(31);
-        let sd = StringDescriptor::encode::<DummyI2cError>(&max)?;
+        let sd = StringDescriptor::encode(&max)?;
         assert_eq!(sd.len(), 31);
         assert_eq!(sd.byte_len(), 62);
         Ok(())
@@ -400,7 +390,7 @@ mod tests {
     #[test]
     fn register_chunks_string_lengths() -> TestResult<()> {
         let mut config = Config::for_variant(Variant::Usb2514b);
-        config.manufacturer_string = StringDescriptor::encode::<DummyI2cError>("Test")?;
+        config.manufacturer_string = StringDescriptor::encode("Test")?;
 
         let chunks = config.to_register_chunks();
         let buf = &chunks[0].1;
@@ -422,8 +412,7 @@ mod tests {
     fn register_chunks_long_string_splits() -> TestResult<()> {
         let mut config = Config::for_variant(Variant::Usb2514b);
         // 20 chars = 40 bytes UTF-16LE → split into 32 + 8
-        config.manufacturer_string =
-            StringDescriptor::encode::<DummyI2cError>("12345678901234567890")?;
+        config.manufacturer_string = StringDescriptor::encode("12345678901234567890")?;
 
         let chunks = config.to_register_chunks();
         assert_eq!(chunks[1].2, 32);
