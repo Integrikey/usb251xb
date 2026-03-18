@@ -324,25 +324,31 @@ impl ConfigBuilder {
         self
     }
 
+    /// Sets the non-removable ports, replacing any previous value.
     pub fn non_removable_ports(mut self, ports: &[Port]) -> Self {
-        let mut bf = self.config.non_removable;
-        for &port in ports {
-            bf = set_port_bit(bf, port, true);
-        }
-        self.config.non_removable = bf;
+        self.config.non_removable = ports_to_bitfield(ports);
         self
     }
 
-    /// Disables ports for both self-powered and bus-powered modes.
+    /// Marks a single port as non-removable (additive).
+    pub fn non_removable_port(mut self, port: Port) -> Self {
+        self.config.non_removable = set_port_bit(self.config.non_removable, port, true);
+        self
+    }
+
+    /// Sets the disabled ports for both self-powered and bus-powered modes,
+    /// replacing any previous value.
     pub fn disabled_ports(mut self, ports: &[Port]) -> Self {
-        let mut ds = self.config.port_disable_self;
-        let mut db = self.config.port_disable_bus;
-        for &port in ports {
-            ds = set_port_bit(ds, port, true);
-            db = set_port_bit(db, port, true);
-        }
-        self.config.port_disable_self = ds;
-        self.config.port_disable_bus = db;
+        let bf = ports_to_bitfield(ports);
+        self.config.port_disable_self = bf;
+        self.config.port_disable_bus = bf;
+        self
+    }
+
+    /// Disables a single port in both power modes (additive).
+    pub fn disable_port(mut self, port: Port) -> Self {
+        self.config.port_disable_self = set_port_bit(self.config.port_disable_self, port, true);
+        self.config.port_disable_bus = set_port_bit(self.config.port_disable_bus, port, true);
         self
     }
 
@@ -366,12 +372,15 @@ impl ConfigBuilder {
         self
     }
 
+    /// Sets the battery charging ports, replacing any previous value.
     pub fn battery_charging_ports(mut self, ports: &[Port]) -> Self {
-        let mut bf = self.config.battery_charging;
-        for &port in ports {
-            bf = set_port_bit(bf, port, true);
-        }
-        self.config.battery_charging = bf;
+        self.config.battery_charging = ports_to_bitfield(ports);
+        self
+    }
+
+    /// Enables battery charging on a single port (additive).
+    pub fn battery_charging_port(mut self, port: Port) -> Self {
+        self.config.battery_charging = set_port_bit(self.config.battery_charging, port, true);
         self
     }
 
@@ -409,18 +418,29 @@ impl ConfigBuilder {
         self
     }
 
+    /// Sets the port swap list, replacing any previous value.
     pub fn port_swap(mut self, ports: &[Port]) -> Self {
-        let mut bf = self.config.port_swap;
-        for &port in ports {
-            bf = set_port_bit(bf, port, true);
-        }
-        self.config.port_swap = bf;
+        self.config.port_swap = ports_to_bitfield(ports);
+        self
+    }
+
+    /// Swaps a single port's D+/D- lines (additive).
+    pub fn swap_port(mut self, port: Port) -> Self {
+        self.config.port_swap = set_port_bit(self.config.port_swap, port, true);
         self
     }
 
     pub fn into_config(self) -> Config {
         self.config
     }
+}
+
+fn ports_to_bitfield(ports: &[Port]) -> PortBitfield {
+    let mut bf = PortBitfield::new();
+    for &port in ports {
+        bf = set_port_bit(bf, port, true);
+    }
+    bf
 }
 
 fn set_port_bit(bf: PortBitfield, port: Port, value: bool) -> PortBitfield {
