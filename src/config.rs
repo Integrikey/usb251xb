@@ -656,9 +656,7 @@ mod tests {
 
     #[test]
     fn builder_serial_enables_string_enable() -> TestResult<()> {
-        let config = Config::builder(Variant::Usb2514b)
-            .serial("SN001")?
-            .build();
+        let config = Config::builder(Variant::Usb2514b).serial("SN001")?.build();
         assert!(config.config3.string_enable());
         Ok(())
     }
@@ -689,14 +687,10 @@ mod tests {
 
     #[test]
     fn builder_high_speed_inverts_hs_disable() {
-        let enabled = Config::builder(Variant::Usb2514b)
-            .high_speed(true)
-            .build();
+        let enabled = Config::builder(Variant::Usb2514b).high_speed(true).build();
         assert!(!enabled.config1.hs_disable());
 
-        let disabled = Config::builder(Variant::Usb2514b)
-            .high_speed(false)
-            .build();
+        let disabled = Config::builder(Variant::Usb2514b).high_speed(false).build();
         assert!(disabled.config1.hs_disable());
     }
 
