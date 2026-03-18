@@ -8,7 +8,7 @@ use embassy_rp::peripherals::I2C1;
 use embassy_time::Timer;
 use usb251xb::config::StringDescriptor;
 use usb251xb::register::*;
-use usb251xb::{Config, Usb251xbAsync, Variant};
+use usb251xb::{Config, Port, Usb251xbAsync, Variant};
 
 bind_interrupts!(struct Irqs {
     I2C1_IRQ => i2c::InterruptHandler<I2C1>;
@@ -130,5 +130,47 @@ mod tests {
             i += 2;
         }
         defmt::assert_eq!(str_buf[1..29], expected[..], "manufacturer string data");
+    }
+
+    #[test]
+    async fn builder_configure_and_readback(mut state: State) {
+        let config = Config::builder(Variant::Usb2514b)
+            .manufacturer("Builder Test")
+            .expect("encode manufacturer")
+            .compound(true)
+            .non_removable_ports(&[Port::Port1])
+            .disabled_ports(&[Port::Port4])
+            .build();
+
+        state
+            .hub
+            .configure(&config)
+            .await
+            .expect("configure via builder");
+
+        // Read config registers (0x00..0x15) and verify key fields.
+        let mut buf = [0u8; 33];
+        let count = state
+            .hub
+            .read_register(REG_VENDOR_ID_LSB, &mut buf)
+            .await
+            .expect("read config registers");
+        defmt::assert_eq!(count, 32, "expected 32-byte block read");
+
+        // Config byte 2 (offset 7): compound bit should be set.
+        // Default 0x20 | compound (bit 3) = 0x28
+        defmt::assert_eq!(buf[8], 0x28, "config2 with compound enabled");
+
+        // Config byte 3 (offset 8): string_enable should be set.
+        defmt::assert_eq!(buf[9] & 0x01, 1, "string_enable auto-set by builder");
+
+        // Port disable self (offset 10): port4 = bit 4.
+        defmt::assert_eq!(buf[11] & 0x10, 0x10, "port4 disabled (self)");
+
+        // Port disable bus (offset 11): port4 = bit 4.
+        defmt::assert_eq!(buf[12] & 0x10, 0x10, "port4 disabled (bus)");
+
+        // Manufacturer string length: "Builder Test" = 12 codeunits * 2 = 24 bytes.
+        defmt::assert_eq!(buf[20], 24, "manufacturer string byte length");
     }
 }

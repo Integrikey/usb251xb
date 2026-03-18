@@ -1,6 +1,15 @@
 use crate::error::StringDescriptorError;
 use crate::register::*;
 
+/// Physical downstream port on the USB251xB hub.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Port {
+    Port1,
+    Port2,
+    Port3,
+    Port4,
+}
+
 /// A single register chunk: (start_register, data_buffer, data_length).
 type Chunk = (u8, [u8; 32], u8);
 
@@ -71,6 +80,7 @@ impl StringDescriptor {
 }
 
 /// Full configuration for a USB251xB/xBi hub controller.
+#[derive(Clone)]
 pub struct Config {
     pub vendor_id: u16,
     pub product_id: u16,
@@ -104,6 +114,11 @@ pub struct Config {
 }
 
 impl Config {
+    /// Creates a [`ConfigBuilder`] initialized with the datasheet defaults for `variant`.
+    pub fn builder(variant: Variant) -> ConfigBuilder {
+        ConfigBuilder::new(variant)
+    }
+
     /// Returns the datasheet-default configuration for the given variant.
     pub fn for_variant(variant: Variant) -> Self {
         Self {
@@ -217,6 +232,203 @@ impl Config {
         chunks[11].2 = 0;
 
         chunks
+    }
+}
+
+/// Ergonomic builder for [`Config`].
+///
+/// Start with [`Config::builder`], chain setters, and finish with [`build`](ConfigBuilder::build).
+/// String setters return `Result` since encoding can fail; all others return `&mut Self`.
+pub struct ConfigBuilder {
+    config: Config,
+}
+
+impl ConfigBuilder {
+    fn new(variant: Variant) -> Self {
+        Self {
+            config: Config::for_variant(variant),
+        }
+    }
+
+    pub fn manufacturer(&mut self, s: &str) -> Result<&mut Self, StringDescriptorError> {
+        self.config.manufacturer_string = StringDescriptor::encode(s)?;
+        self.config.config3 = self.config.config3.with_string_enable(true);
+        Ok(self)
+    }
+
+    pub fn product(&mut self, s: &str) -> Result<&mut Self, StringDescriptorError> {
+        self.config.product_string = StringDescriptor::encode(s)?;
+        self.config.config3 = self.config.config3.with_string_enable(true);
+        Ok(self)
+    }
+
+    pub fn serial(&mut self, s: &str) -> Result<&mut Self, StringDescriptorError> {
+        self.config.serial_string = StringDescriptor::encode(s)?;
+        self.config.config3 = self.config.config3.with_string_enable(true);
+        Ok(self)
+    }
+
+    pub fn vendor_id(&mut self, id: u16) -> &mut Self {
+        self.config.vendor_id = id;
+        self
+    }
+
+    pub fn product_id(&mut self, id: u16) -> &mut Self {
+        self.config.product_id = id;
+        self
+    }
+
+    pub fn device_id(&mut self, id: u16) -> &mut Self {
+        self.config.device_id = id;
+        self
+    }
+
+    pub fn compound(&mut self, enabled: bool) -> &mut Self {
+        self.config.config2 = self.config.config2.with_compound(enabled);
+        self
+    }
+
+    pub fn self_powered(&mut self, enabled: bool) -> &mut Self {
+        self.config.config1 = self.config.config1.with_self_bus_power(enabled);
+        self
+    }
+
+    pub fn mtt(&mut self, enabled: bool) -> &mut Self {
+        self.config.config1 = self.config.config1.with_mtt_enable(enabled);
+        self
+    }
+
+    /// Enables or disables high-speed operation (inverts `hs_disable` register bit).
+    pub fn high_speed(&mut self, enabled: bool) -> &mut Self {
+        self.config.config1 = self.config.config1.with_hs_disable(!enabled);
+        self
+    }
+
+    pub fn power_switching(&mut self, mode: PowerSwitching) -> &mut Self {
+        self.config.config1 = self.config.config1.with_port_power(mode);
+        self
+    }
+
+    pub fn current_sensing(&mut self, mode: CurrentSensing) -> &mut Self {
+        self.config.config1 = self.config.config1.with_current_sensing(mode);
+        self
+    }
+
+    pub fn oc_timer(&mut self, timer: OcTimer) -> &mut Self {
+        self.config.config2 = self.config.config2.with_oc_timer(timer);
+        self
+    }
+
+    pub fn dynamic_power(&mut self, enabled: bool) -> &mut Self {
+        self.config.config2 = self.config.config2.with_dynamic_power(enabled);
+        self
+    }
+
+    pub fn non_removable_ports(&mut self, ports: &[Port]) -> &mut Self {
+        let mut bf = self.config.non_removable;
+        for &port in ports {
+            bf = set_port_bit(bf, port, true);
+        }
+        self.config.non_removable = bf;
+        self
+    }
+
+    /// Disables ports for both self-powered and bus-powered modes.
+    pub fn disabled_ports(&mut self, ports: &[Port]) -> &mut Self {
+        let mut ds = self.config.port_disable_self;
+        let mut db = self.config.port_disable_bus;
+        for &port in ports {
+            ds = set_port_bit(ds, port, true);
+            db = set_port_bit(db, port, true);
+        }
+        self.config.port_disable_self = ds;
+        self.config.port_disable_bus = db;
+        self
+    }
+
+    pub fn max_power_self_ma(&mut self, ma: u16) -> &mut Self {
+        self.config.max_power_self_ma = ma;
+        self
+    }
+
+    pub fn max_power_bus_ma(&mut self, ma: u16) -> &mut Self {
+        self.config.max_power_bus_ma = ma;
+        self
+    }
+
+    pub fn power_on_time_ms(&mut self, ms: u16) -> &mut Self {
+        self.config.power_on_time_ms = ms;
+        self
+    }
+
+    pub fn language_id(&mut self, id: u16) -> &mut Self {
+        self.config.language_id = id;
+        self
+    }
+
+    pub fn battery_charging_ports(&mut self, ports: &[Port]) -> &mut Self {
+        let mut bf = self.config.battery_charging;
+        for &port in ports {
+            bf = set_port_bit(bf, port, true);
+        }
+        self.config.battery_charging = bf;
+        self
+    }
+
+    pub fn boost_upstream(&mut self, level: BoostLevel) -> &mut Self {
+        self.config.boost_upstream = BoostUpstream::new().with_level(level);
+        self
+    }
+
+    pub fn boost_downstream_port(&mut self, port: Port, level: BoostLevel) -> &mut Self {
+        self.config.boost_downstream = match port {
+            Port::Port1 => self.config.boost_downstream.with_port1(level),
+            Port::Port2 => self.config.boost_downstream.with_port2(level),
+            Port::Port3 => self.config.boost_downstream.with_port3(level),
+            Port::Port4 => self.config.boost_downstream.with_port4(level),
+        };
+        self
+    }
+
+    pub fn port_map(&mut self, port: Port, logical: LogicalPort) -> &mut Self {
+        self.config.config3 = self.config.config3.with_port_map_enable(true);
+        match port {
+            Port::Port1 => {
+                self.config.port_map_12 = self.config.port_map_12.with_port1(logical);
+            }
+            Port::Port2 => {
+                self.config.port_map_12 = self.config.port_map_12.with_port2(logical);
+            }
+            Port::Port3 => {
+                self.config.port_map_34 = self.config.port_map_34.with_port3(logical);
+            }
+            Port::Port4 => {
+                self.config.port_map_34 = self.config.port_map_34.with_port4(logical);
+            }
+        }
+        self
+    }
+
+    pub fn port_swap(&mut self, ports: &[Port]) -> &mut Self {
+        let mut bf = self.config.port_swap;
+        for &port in ports {
+            bf = set_port_bit(bf, port, true);
+        }
+        self.config.port_swap = bf;
+        self
+    }
+
+    pub fn build(&self) -> Config {
+        self.config.clone()
+    }
+}
+
+fn set_port_bit(bf: PortBitfield, port: Port, value: bool) -> PortBitfield {
+    match port {
+        Port::Port1 => bf.with_port1(value),
+        Port::Port2 => bf.with_port2(value),
+        Port::Port3 => bf.with_port3(value),
+        Port::Port4 => bf.with_port4(value),
     }
 }
 
@@ -417,6 +629,106 @@ mod tests {
         let chunks = config.to_register_chunks();
         assert_eq!(chunks[1].2, 32);
         assert_eq!(chunks[2].2, 8);
+        Ok(())
+    }
+
+    #[test]
+    fn builder_string_enables_string_enable() -> TestResult<()> {
+        let config = Config::builder(Variant::Usb2514b)
+            .manufacturer("Test")?
+            .build();
+        assert!(config.config3.string_enable());
+        Ok(())
+    }
+
+    #[test]
+    fn builder_no_string_leaves_string_enable_off() {
+        let config = Config::builder(Variant::Usb2514b).build();
+        assert!(!config.config3.string_enable());
+    }
+
+    #[test]
+    fn builder_product_enables_string_enable() -> TestResult<()> {
+        let config = Config::builder(Variant::Usb2514b).product("Foo")?.build();
+        assert!(config.config3.string_enable());
+        Ok(())
+    }
+
+    #[test]
+    fn builder_serial_enables_string_enable() -> TestResult<()> {
+        let config = Config::builder(Variant::Usb2514b)
+            .serial("SN001")?
+            .build();
+        assert!(config.config3.string_enable());
+        Ok(())
+    }
+
+    #[test]
+    fn builder_disabled_ports_sets_both_fields() {
+        let config = Config::builder(Variant::Usb2514b)
+            .disabled_ports(&[Port::Port3, Port::Port4])
+            .build();
+        assert!(!config.port_disable_self.port1());
+        assert!(!config.port_disable_self.port2());
+        assert!(config.port_disable_self.port3());
+        assert!(config.port_disable_self.port4());
+        assert!(!config.port_disable_bus.port1());
+        assert!(!config.port_disable_bus.port2());
+        assert!(config.port_disable_bus.port3());
+        assert!(config.port_disable_bus.port4());
+    }
+
+    #[test]
+    fn builder_port_map_enables_port_map_enable() {
+        let config = Config::builder(Variant::Usb2514b)
+            .port_map(Port::Port1, LogicalPort::Port3)
+            .build();
+        assert!(config.config3.port_map_enable());
+        assert_eq!(config.port_map_12.port1(), LogicalPort::Port3);
+    }
+
+    #[test]
+    fn builder_high_speed_inverts_hs_disable() {
+        let enabled = Config::builder(Variant::Usb2514b)
+            .high_speed(true)
+            .build();
+        assert!(!enabled.config1.hs_disable());
+
+        let disabled = Config::builder(Variant::Usb2514b)
+            .high_speed(false)
+            .build();
+        assert!(disabled.config1.hs_disable());
+    }
+
+    #[test]
+    fn builder_matches_manual_config() -> TestResult<()> {
+        let built = Config::builder(Variant::Usb2514b)
+            .manufacturer("Keystrike Inc.")?
+            .compound(true)
+            .non_removable_ports(&[Port::Port1])
+            .disabled_ports(&[Port::Port4])
+            .build();
+
+        let mut manual = Config::for_variant(Variant::Usb2514b);
+        manual.manufacturer_string = StringDescriptor::encode("Keystrike Inc.")?;
+        manual.config3 = manual.config3.with_string_enable(true);
+        manual.config2 = manual.config2.with_compound(true);
+        manual.non_removable = manual.non_removable.with_port1(true);
+        manual.port_disable_self = manual.port_disable_self.with_port4(true);
+        manual.port_disable_bus = manual.port_disable_bus.with_port4(true);
+
+        let built_chunks = built.to_register_chunks();
+        let manual_chunks = manual.to_register_chunks();
+        for i in 0..12 {
+            assert_eq!(built_chunks[i].0, manual_chunks[i].0, "chunk {i} address");
+            assert_eq!(built_chunks[i].2, manual_chunks[i].2, "chunk {i} length");
+            let len = built_chunks[i].2 as usize;
+            assert_eq!(
+                &built_chunks[i].1[..len],
+                &manual_chunks[i].1[..len],
+                "chunk {i} data"
+            );
+        }
         Ok(())
     }
 }
