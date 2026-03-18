@@ -1,6 +1,14 @@
 use crate::error::StringDescriptorError;
 use crate::register::*;
 
+/// Milliamp value for power configuration methods.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Milliamps(pub u16);
+
+/// Millisecond value for timing configuration methods.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Milliseconds(pub u16);
+
 /// Physical downstream port on the USB251xB hub.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Port {
@@ -352,28 +360,28 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn max_power_self_ma(mut self, ma: u16) -> Self {
-        self.config.max_power_self_ma = ma;
+    pub fn max_power_self(mut self, ma: Milliamps) -> Self {
+        self.config.max_power_self_ma = ma.0;
         self
     }
 
-    pub fn max_power_bus_ma(mut self, ma: u16) -> Self {
-        self.config.max_power_bus_ma = ma;
+    pub fn max_power_bus(mut self, ma: Milliamps) -> Self {
+        self.config.max_power_bus_ma = ma.0;
         self
     }
 
-    pub fn hub_current_self_ma(mut self, ma: u16) -> Self {
-        self.config.hub_current_self_ma = ma;
+    pub fn hub_current_self(mut self, ma: Milliamps) -> Self {
+        self.config.hub_current_self_ma = ma.0;
         self
     }
 
-    pub fn hub_current_bus_ma(mut self, ma: u16) -> Self {
-        self.config.hub_current_bus_ma = ma;
+    pub fn hub_current_bus(mut self, ma: Milliamps) -> Self {
+        self.config.hub_current_bus_ma = ma.0;
         self
     }
 
-    pub fn power_on_time_ms(mut self, ms: u16) -> Self {
-        self.config.power_on_time_ms = ms;
+    pub fn power_on_time(mut self, ms: Milliseconds) -> Self {
+        self.config.power_on_time_ms = ms.0;
         self
     }
 
