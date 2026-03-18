@@ -237,7 +237,7 @@ impl Config {
 
 /// Ergonomic builder for [`Config`].
 ///
-/// Start with [`Config::builder`], chain setters, and finish with [`build`](ConfigBuilder::build).
+/// Start with [`Config::builder`], chain setters, and finish with [`into_config`](ConfigBuilder::into_config).
 /// String setters return `Result` since encoding can fail; all others return `Self`.
 pub struct ConfigBuilder {
     config: Config,
@@ -418,7 +418,7 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn build(self) -> Config {
+    pub fn into_config(self) -> Config {
         self.config
     }
 }
@@ -636,27 +636,31 @@ mod tests {
     fn builder_string_enables_string_enable() -> TestResult<()> {
         let config = Config::builder(Variant::Usb2514b)
             .manufacturer("Test")?
-            .build();
+            .into_config();
         assert!(config.config3.string_enable());
         Ok(())
     }
 
     #[test]
     fn builder_no_string_leaves_string_enable_off() {
-        let config = Config::builder(Variant::Usb2514b).build();
+        let config = Config::builder(Variant::Usb2514b).into_config();
         assert!(!config.config3.string_enable());
     }
 
     #[test]
     fn builder_product_enables_string_enable() -> TestResult<()> {
-        let config = Config::builder(Variant::Usb2514b).product("Foo")?.build();
+        let config = Config::builder(Variant::Usb2514b)
+            .product("Foo")?
+            .into_config();
         assert!(config.config3.string_enable());
         Ok(())
     }
 
     #[test]
     fn builder_serial_enables_string_enable() -> TestResult<()> {
-        let config = Config::builder(Variant::Usb2514b).serial("SN001")?.build();
+        let config = Config::builder(Variant::Usb2514b)
+            .serial("SN001")?
+            .into_config();
         assert!(config.config3.string_enable());
         Ok(())
     }
@@ -665,7 +669,7 @@ mod tests {
     fn builder_disabled_ports_sets_both_fields() {
         let config = Config::builder(Variant::Usb2514b)
             .disabled_ports(&[Port::Port3, Port::Port4])
-            .build();
+            .into_config();
         assert!(!config.port_disable_self.port1());
         assert!(!config.port_disable_self.port2());
         assert!(config.port_disable_self.port3());
@@ -680,17 +684,21 @@ mod tests {
     fn builder_port_map_enables_port_map_enable() {
         let config = Config::builder(Variant::Usb2514b)
             .port_map(Port::Port1, LogicalPort::Port3)
-            .build();
+            .into_config();
         assert!(config.config3.port_map_enable());
         assert_eq!(config.port_map_12.port1(), LogicalPort::Port3);
     }
 
     #[test]
     fn builder_high_speed_inverts_hs_disable() {
-        let enabled = Config::builder(Variant::Usb2514b).high_speed(true).build();
+        let enabled = Config::builder(Variant::Usb2514b)
+            .high_speed(true)
+            .into_config();
         assert!(!enabled.config1.hs_disable());
 
-        let disabled = Config::builder(Variant::Usb2514b).high_speed(false).build();
+        let disabled = Config::builder(Variant::Usb2514b)
+            .high_speed(false)
+            .into_config();
         assert!(disabled.config1.hs_disable());
     }
 
@@ -701,7 +709,7 @@ mod tests {
             .compound(true)
             .non_removable_ports(&[Port::Port1])
             .disabled_ports(&[Port::Port4])
-            .build();
+            .into_config();
 
         let mut manual = Config::for_variant(Variant::Usb2514b);
         manual.manufacturer_string = StringDescriptor::encode("Keystrike Inc.")?;

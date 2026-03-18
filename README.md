@@ -33,7 +33,7 @@ let config = Config::builder(Variant::Usb2514b)
     .compound(true)
     .non_removable_ports(&[Port::Port1])
     .disabled_ports(&[Port::Port4])
-    .build();
+    .into_config();
 
 let mut hub = Usb251xb::new(i2c);
 hub.configure_and_attach(&config)?;
@@ -46,7 +46,7 @@ Enable the `async` feature and use `Usb251xbAsync`:
 ```rust
 use usb251xb::{Config, Usb251xbAsync, Variant};
 
-let config = Config::builder(Variant::Usb2514b).build();
+let config = Config::builder(Variant::Usb2514b).into_config();
 let mut hub = Usb251xbAsync::new(i2c);
 hub.configure_and_attach(&config).await?;
 ```

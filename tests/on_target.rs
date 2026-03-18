@@ -140,7 +140,7 @@ mod tests {
             .compound(true)
             .non_removable_ports(&[Port::Port1])
             .disabled_ports(&[Port::Port4])
-            .build();
+            .into_config();
 
         state
             .hub
