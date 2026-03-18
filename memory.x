@@ -1,3 +1,4 @@
+/* Memory layout for on-target integration tests (RP2350A). */
 MEMORY {
     /*
      * The RP2350 has either external or internal flash.
