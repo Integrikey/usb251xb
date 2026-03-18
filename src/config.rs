@@ -238,7 +238,7 @@ impl Config {
 /// Ergonomic builder for [`Config`].
 ///
 /// Start with [`Config::builder`], chain setters, and finish with [`build`](ConfigBuilder::build).
-/// String setters return `Result` since encoding can fail; all others return `&mut Self`.
+/// String setters return `Result` since encoding can fail; all others return `Self`.
 pub struct ConfigBuilder {
     config: Config,
 }
@@ -250,81 +250,81 @@ impl ConfigBuilder {
         }
     }
 
-    pub fn manufacturer(&mut self, s: &str) -> Result<&mut Self, StringDescriptorError> {
+    pub fn manufacturer(mut self, s: &str) -> Result<Self, StringDescriptorError> {
         self.config.manufacturer_string = StringDescriptor::encode(s)?;
         self.config.config3 = self.config.config3.with_string_enable(true);
         Ok(self)
     }
 
-    pub fn product(&mut self, s: &str) -> Result<&mut Self, StringDescriptorError> {
+    pub fn product(mut self, s: &str) -> Result<Self, StringDescriptorError> {
         self.config.product_string = StringDescriptor::encode(s)?;
         self.config.config3 = self.config.config3.with_string_enable(true);
         Ok(self)
     }
 
-    pub fn serial(&mut self, s: &str) -> Result<&mut Self, StringDescriptorError> {
+    pub fn serial(mut self, s: &str) -> Result<Self, StringDescriptorError> {
         self.config.serial_string = StringDescriptor::encode(s)?;
         self.config.config3 = self.config.config3.with_string_enable(true);
         Ok(self)
     }
 
-    pub fn vendor_id(&mut self, id: u16) -> &mut Self {
+    pub fn vendor_id(mut self, id: u16) -> Self {
         self.config.vendor_id = id;
         self
     }
 
-    pub fn product_id(&mut self, id: u16) -> &mut Self {
+    pub fn product_id(mut self, id: u16) -> Self {
         self.config.product_id = id;
         self
     }
 
-    pub fn device_id(&mut self, id: u16) -> &mut Self {
+    pub fn device_id(mut self, id: u16) -> Self {
         self.config.device_id = id;
         self
     }
 
-    pub fn compound(&mut self, enabled: bool) -> &mut Self {
+    pub fn compound(mut self, enabled: bool) -> Self {
         self.config.config2 = self.config.config2.with_compound(enabled);
         self
     }
 
-    pub fn self_powered(&mut self, enabled: bool) -> &mut Self {
+    pub fn self_powered(mut self, enabled: bool) -> Self {
         self.config.config1 = self.config.config1.with_self_bus_power(enabled);
         self
     }
 
-    pub fn mtt(&mut self, enabled: bool) -> &mut Self {
+    pub fn mtt(mut self, enabled: bool) -> Self {
         self.config.config1 = self.config.config1.with_mtt_enable(enabled);
         self
     }
 
     /// Enables or disables high-speed operation (inverts `hs_disable` register bit).
-    pub fn high_speed(&mut self, enabled: bool) -> &mut Self {
+    pub fn high_speed(mut self, enabled: bool) -> Self {
         self.config.config1 = self.config.config1.with_hs_disable(!enabled);
         self
     }
 
-    pub fn power_switching(&mut self, mode: PowerSwitching) -> &mut Self {
+    pub fn power_switching(mut self, mode: PowerSwitching) -> Self {
         self.config.config1 = self.config.config1.with_port_power(mode);
         self
     }
 
-    pub fn current_sensing(&mut self, mode: CurrentSensing) -> &mut Self {
+    pub fn current_sensing(mut self, mode: CurrentSensing) -> Self {
         self.config.config1 = self.config.config1.with_current_sensing(mode);
         self
     }
 
-    pub fn oc_timer(&mut self, timer: OcTimer) -> &mut Self {
+    pub fn oc_timer(mut self, timer: OcTimer) -> Self {
         self.config.config2 = self.config.config2.with_oc_timer(timer);
         self
     }
 
-    pub fn dynamic_power(&mut self, enabled: bool) -> &mut Self {
+    pub fn dynamic_power(mut self, enabled: bool) -> Self {
         self.config.config2 = self.config.config2.with_dynamic_power(enabled);
         self
     }
 
-    pub fn non_removable_ports(&mut self, ports: &[Port]) -> &mut Self {
+    pub fn non_removable_ports(mut self, ports: &[Port]) -> Self {
         let mut bf = self.config.non_removable;
         for &port in ports {
             bf = set_port_bit(bf, port, true);
@@ -334,7 +334,7 @@ impl ConfigBuilder {
     }
 
     /// Disables ports for both self-powered and bus-powered modes.
-    pub fn disabled_ports(&mut self, ports: &[Port]) -> &mut Self {
+    pub fn disabled_ports(mut self, ports: &[Port]) -> Self {
         let mut ds = self.config.port_disable_self;
         let mut db = self.config.port_disable_bus;
         for &port in ports {
@@ -346,27 +346,27 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn max_power_self_ma(&mut self, ma: u16) -> &mut Self {
+    pub fn max_power_self_ma(mut self, ma: u16) -> Self {
         self.config.max_power_self_ma = ma;
         self
     }
 
-    pub fn max_power_bus_ma(&mut self, ma: u16) -> &mut Self {
+    pub fn max_power_bus_ma(mut self, ma: u16) -> Self {
         self.config.max_power_bus_ma = ma;
         self
     }
 
-    pub fn power_on_time_ms(&mut self, ms: u16) -> &mut Self {
+    pub fn power_on_time_ms(mut self, ms: u16) -> Self {
         self.config.power_on_time_ms = ms;
         self
     }
 
-    pub fn language_id(&mut self, id: u16) -> &mut Self {
+    pub fn language_id(mut self, id: u16) -> Self {
         self.config.language_id = id;
         self
     }
 
-    pub fn battery_charging_ports(&mut self, ports: &[Port]) -> &mut Self {
+    pub fn battery_charging_ports(mut self, ports: &[Port]) -> Self {
         let mut bf = self.config.battery_charging;
         for &port in ports {
             bf = set_port_bit(bf, port, true);
@@ -375,12 +375,12 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn boost_upstream(&mut self, level: BoostLevel) -> &mut Self {
+    pub fn boost_upstream(mut self, level: BoostLevel) -> Self {
         self.config.boost_upstream = BoostUpstream::new().with_level(level);
         self
     }
 
-    pub fn boost_downstream_port(&mut self, port: Port, level: BoostLevel) -> &mut Self {
+    pub fn boost_downstream_port(mut self, port: Port, level: BoostLevel) -> Self {
         self.config.boost_downstream = match port {
             Port::Port1 => self.config.boost_downstream.with_port1(level),
             Port::Port2 => self.config.boost_downstream.with_port2(level),
@@ -390,7 +390,7 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn port_map(&mut self, port: Port, logical: LogicalPort) -> &mut Self {
+    pub fn port_map(mut self, port: Port, logical: LogicalPort) -> Self {
         self.config.config3 = self.config.config3.with_port_map_enable(true);
         match port {
             Port::Port1 => {
@@ -409,7 +409,7 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn port_swap(&mut self, ports: &[Port]) -> &mut Self {
+    pub fn port_swap(mut self, ports: &[Port]) -> Self {
         let mut bf = self.config.port_swap;
         for &port in ports {
             bf = set_port_bit(bf, port, true);
@@ -418,8 +418,8 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn build(&self) -> Config {
-        self.config.clone()
+    pub fn build(self) -> Config {
+        self.config
     }
 }
 
