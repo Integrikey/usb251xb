@@ -2,6 +2,7 @@ use embedded_hal::i2c;
 
 /// Error returned by [`StringDescriptor`](crate::config::StringDescriptor) operations.
 #[derive(Debug, thiserror::Error)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum StringDescriptorError {
     /// The string exceeds the 31-codeunit maximum.
     #[error("string too long: {len} codeunits, max {max}")]
@@ -10,6 +11,7 @@ pub enum StringDescriptorError {
 
 /// Error type for USB251xB driver operations.
 #[derive(Debug, thiserror::Error)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Error<E: i2c::Error> {
     /// I2C bus error from the underlying transport.
     #[error("I2C error: {0:?}")]

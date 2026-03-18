@@ -121,7 +121,7 @@ impl Config {
             hub_current_self_ma: 100,
             hub_current_bus_ma: 100,
             power_on_time_ms: 100,
-            language_id: 0x0000,
+            language_id: 0x0409,
             manufacturer_string: StringDescriptor::empty(),
             product_string: StringDescriptor::empty(),
             serial_string: StringDescriptor::empty(),
