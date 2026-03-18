@@ -362,6 +362,16 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn hub_current_self_ma(mut self, ma: u16) -> Self {
+        self.config.hub_current_self_ma = ma;
+        self
+    }
+
+    pub fn hub_current_bus_ma(mut self, ma: u16) -> Self {
+        self.config.hub_current_bus_ma = ma;
+        self
+    }
+
     pub fn power_on_time_ms(mut self, ms: u16) -> Self {
         self.config.power_on_time_ms = ms;
         self
