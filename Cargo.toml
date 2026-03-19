@@ -5,6 +5,9 @@ edition = "2024"
 description = "no_std embedded-hal driver for Microchip USB251xB/xBi USB 2.0 hub controllers"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/Integrikey/usb251xb"
+keywords = ["usb251xb", "usb", "hub", "embedded-hal", "no-std"]
+categories = ["embedded", "hardware-support", "no-std"]
+rust-version = "1.85"
 
 [dependencies]
 embedded-hal = "1.0"

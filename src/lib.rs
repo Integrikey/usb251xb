@@ -13,7 +13,7 @@ pub mod device_async;
 pub use config::{Config, ConfigBuilder, Milliamps, Milliseconds, Port, StringDescriptor};
 pub use device::Usb251xb;
 pub use error::{Error, StringDescriptorError};
-pub use register::Variant;
+pub use register::{BoostLevel, CurrentSensing, LogicalPort, OcTimer, PowerSwitching, Variant};
 
 #[cfg(feature = "async")]
 pub use device_async::Usb251xbAsync;

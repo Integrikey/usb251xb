@@ -88,7 +88,7 @@ impl StringDescriptor {
 }
 
 /// Full configuration for a USB251xB/xBi hub controller.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Config {
     pub vendor_id: u16,
     pub product_id: u16,
@@ -247,6 +247,7 @@ impl Config {
 ///
 /// Start with [`Config::builder`], chain setters, and finish with [`into_config`](ConfigBuilder::into_config).
 /// String setters return `Result` since encoding can fail; all others return `Self`.
+#[derive(Debug)]
 pub struct ConfigBuilder {
     config: Config,
 }
