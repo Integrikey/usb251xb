@@ -259,49 +259,58 @@ impl ConfigBuilder {
         }
     }
 
+    /// Sets the USB manufacturer string descriptor. Auto-enables `string_enable`.
     pub fn manufacturer(mut self, s: &str) -> Result<Self, StringDescriptorError> {
         self.config.manufacturer_string = StringDescriptor::encode(s)?;
         self.config.config3 = self.config.config3.with_string_enable(true);
         Ok(self)
     }
 
+    /// Sets the USB product string descriptor. Auto-enables `string_enable`.
     pub fn product(mut self, s: &str) -> Result<Self, StringDescriptorError> {
         self.config.product_string = StringDescriptor::encode(s)?;
         self.config.config3 = self.config.config3.with_string_enable(true);
         Ok(self)
     }
 
+    /// Sets the USB serial number string descriptor. Auto-enables `string_enable`.
     pub fn serial(mut self, s: &str) -> Result<Self, StringDescriptorError> {
         self.config.serial_string = StringDescriptor::encode(s)?;
         self.config.config3 = self.config.config3.with_string_enable(true);
         Ok(self)
     }
 
+    /// Sets the USB vendor ID (default: `0x0424` Microchip).
     pub fn vendor_id(mut self, id: u16) -> Self {
         self.config.vendor_id = id;
         self
     }
 
+    /// Sets the USB product ID (default: variant-dependent).
     pub fn product_id(mut self, id: u16) -> Self {
         self.config.product_id = id;
         self
     }
 
+    /// Sets the USB device ID (default: `0x0BB3`).
     pub fn device_id(mut self, id: u16) -> Self {
         self.config.device_id = id;
         self
     }
 
+    /// Enables compound device mode (hub + embedded function).
     pub fn compound(mut self, enabled: bool) -> Self {
         self.config.config2 = self.config.config2.with_compound(enabled);
         self
     }
 
+    /// Sets self-powered vs bus-powered mode.
     pub fn self_powered(mut self, enabled: bool) -> Self {
         self.config.config1 = self.config.config1.with_self_bus_power(enabled);
         self
     }
 
+    /// Enables multi-TT (transaction translator) mode.
     pub fn mtt(mut self, enabled: bool) -> Self {
         self.config.config1 = self.config.config1.with_mtt_enable(enabled);
         self
@@ -313,21 +322,25 @@ impl ConfigBuilder {
         self
     }
 
+    /// Sets the port power switching mode (ganged or individual).
     pub fn power_switching(mut self, mode: PowerSwitching) -> Self {
         self.config.config1 = self.config.config1.with_port_power(mode);
         self
     }
 
+    /// Sets the overcurrent sensing mode.
     pub fn current_sensing(mut self, mode: CurrentSensing) -> Self {
         self.config.config1 = self.config.config1.with_current_sensing(mode);
         self
     }
 
+    /// Sets the overcurrent detection timer.
     pub fn oc_timer(mut self, timer: OcTimer) -> Self {
         self.config.config2 = self.config.config2.with_oc_timer(timer);
         self
     }
 
+    /// Enables dynamic power switching to reduce idle power consumption.
     pub fn dynamic_power(mut self, enabled: bool) -> Self {
         self.config.config2 = self.config.config2.with_dynamic_power(enabled);
         self
@@ -361,31 +374,37 @@ impl ConfigBuilder {
         self
     }
 
+    /// Maximum power draw reported to the host in self-powered mode.
     pub fn max_power_self(mut self, ma: Milliamps) -> Self {
         self.config.max_power_self_ma = ma.0;
         self
     }
 
+    /// Maximum power draw reported to the host in bus-powered mode.
     pub fn max_power_bus(mut self, ma: Milliamps) -> Self {
         self.config.max_power_bus_ma = ma.0;
         self
     }
 
+    /// Hub controller current consumption in self-powered mode.
     pub fn hub_current_self(mut self, ma: Milliamps) -> Self {
         self.config.hub_current_self_ma = ma.0;
         self
     }
 
+    /// Hub controller current consumption in bus-powered mode.
     pub fn hub_current_bus(mut self, ma: Milliamps) -> Self {
         self.config.hub_current_bus_ma = ma.0;
         self
     }
 
+    /// Time the hub waits before applying port power after connection.
     pub fn power_on_time(mut self, ms: Milliseconds) -> Self {
         self.config.power_on_time_ms = ms.0;
         self
     }
 
+    /// Sets the USB language ID for string descriptors (default: `0x0409` English US).
     pub fn language_id(mut self, id: u16) -> Self {
         self.config.language_id = id;
         self
@@ -403,11 +422,13 @@ impl ConfigBuilder {
         self
     }
 
+    /// Sets the upstream port signal boost level.
     pub fn boost_upstream(mut self, level: BoostLevel) -> Self {
         self.config.boost_upstream = BoostUpstream::new().with_level(level);
         self
     }
 
+    /// Sets the signal boost level for a downstream port.
     pub fn boost_downstream_port(mut self, port: Port, level: BoostLevel) -> Self {
         self.config.boost_downstream = match port {
             Port::Port1 => self.config.boost_downstream.with_port1(level),
@@ -418,6 +439,7 @@ impl ConfigBuilder {
         self
     }
 
+    /// Maps a physical port to a logical port number. Auto-enables `port_map_enable`.
     pub fn port_map(mut self, port: Port, logical: LogicalPort) -> Self {
         self.config.config3 = self.config.config3.with_port_map_enable(true);
         match port {
@@ -449,6 +471,7 @@ impl ConfigBuilder {
         self
     }
 
+    /// Consumes the builder and returns the finished [`Config`].
     pub fn into_config(self) -> Config {
         self.config
     }

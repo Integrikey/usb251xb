@@ -55,6 +55,7 @@ impl Variant {
     }
 }
 
+/// Overcurrent sensing mode.
 #[derive(Specifier, Debug, Clone, Copy, PartialEq, Eq)]
 #[bits = 2]
 pub enum CurrentSensing {
@@ -63,6 +64,7 @@ pub enum CurrentSensing {
     NotSupported = 0b10,
 }
 
+/// Port power switching mode.
 #[derive(Specifier, Debug, Clone, Copy, PartialEq, Eq)]
 #[bits = 1]
 pub enum PowerSwitching {
@@ -70,6 +72,7 @@ pub enum PowerSwitching {
     Individual = 1,
 }
 
+/// Overcurrent detection timer period.
 #[derive(Specifier, Debug, Clone, Copy, PartialEq, Eq)]
 #[bits = 2]
 pub enum OcTimer {
@@ -79,6 +82,7 @@ pub enum OcTimer {
     Ms16 = 0b11,
 }
 
+/// USB signal boost level for upstream or downstream ports.
 #[derive(Specifier, Debug, Clone, Copy, PartialEq, Eq)]
 #[bits = 2]
 pub enum BoostLevel {
@@ -88,6 +92,7 @@ pub enum BoostLevel {
     High = 0b11,
 }
 
+/// Logical port number for physical-to-logical port remapping.
 #[derive(Specifier, Debug, Clone, Copy, PartialEq, Eq)]
 #[bits = 4]
 pub enum LogicalPort {
