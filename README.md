@@ -1,5 +1,7 @@
 # Rust USB251xB/xBi USB 2.0 Hub Controller Driver
 
+[![crates.io](https://img.shields.io/crates/v/usb251xb.svg)](https://crates.io/crates/usb251xb)
+
 `no_std` Rust driver for the Microchip USB2512B, USB2513B and USB2514B
 USB 2.0 hub controllers, based on the [`embedded-hal`] traits.
 
